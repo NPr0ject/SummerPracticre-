@@ -19,9 +19,6 @@ jobs:
       with:
         dotnet-version: '9.0.301'
 
-    - name: Restore dependencies
-      run: dotnet restore
-
     - name: Build (Release)
       run: dotnet build --configuration Release --no-restore
 
