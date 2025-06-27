@@ -1,31 +1,42 @@
-name: CI
+name: CI (Windows)
 
 on:
   push:
-    branches: [ "task01" ]
+    branches: [ task01 ]
   pull_request:
-    branches: [ "task01" ]
-  workflow_dispatch:
+    branches: [ task01 ]
+
 jobs:
   build-and-test:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
+    - name: Checkout code (full history)
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup .NET 9.0
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: '9.0.x'
 
-    - name: Clean workspace
+    - name: Validate project structure
       run: |
+        ls -R
+        dotnet sln list
 
-    - name: Restore dependencies (forced)
+    - name: Full clean
       run: |
-    - name: Build (Release)
-      run: dotnet build --configuration Release --no-restore
+        dotnet clean -c Release
+        if (Test-Path -Path "*/bin") { Remove-Item -Recurse -Force "*/bin" }
+        if (Test-Path -Path "*/obj") { Remove-Item -Recurse -Force "*/obj" }
+
+    - name: Restore with verification
+      run: dotnet restore --force-evaluate --verbosity detailed
+
+    - name: Build with diagnostics
+      run: dotnet build --configuration Release --no-restore -v:diag
 
     - name: Run tests
       run: dotnet test --no-build --configuration Release
