@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [ "task05" ]
+  pull_request:
+    branches: [ "task05" ]
+  workflow_dispatch:
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9.0
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build (Release)
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Run tests
+      run: dotnet test --no-build --configuration Release
