@@ -3,19 +3,27 @@ using System.Collections.Concurrent;
 
 namespace task17;
 
+public interface IScheduler
+{
+    bool HasCommand();
+    ICommand Select();
+    void Add(ICommand cmd);
+}
 public interface ICommand
 {
     void Execute();
 }
 public class ServerThread
 {
+    public Scheduler scheduler;
     public Thread thread;
     public BlockingCollection<ICommand> commandQueue;
     public bool active;
     public bool SoftStopRequest;
 
-    public ServerThread()
+    public ServerThread(Scheduler scheduler)
     {
+        this.scheduler = scheduler;
         thread = new Thread(Run);
         commandQueue = new BlockingCollection<ICommand>();
         active = true;
@@ -27,7 +35,20 @@ public class ServerThread
     {
         while (active)
         {
-            if (commandQueue.TryTake(out ICommand? command))
+            ICommand command = null!;
+            if (scheduler.HasCommand())
+            {
+                command = scheduler.Select();
+            }
+            else if (commandQueue.TryTake(out command!))
+            {
+                if (command is LongCommand)
+                {
+                    scheduler.Add(command);
+                }
+            }
+            
+            if (command != null)
             {
                 try
                 {
@@ -38,7 +59,6 @@ public class ServerThread
                     Console.WriteLine($"исключение: {ex.Message}");
                 }
             }
-
             if (SoftStopRequest && commandQueue.Count == 0)
             {
                 active = false;
@@ -95,5 +115,53 @@ public class ExceptionCommand : ICommand
         int x = 1;
         int y = 0;
         Console.WriteLine(x / y);
+    }
+}
+
+public class Scheduler : IScheduler
+{
+    public ConcurrentQueue<ICommand> commandQ = new ConcurrentQueue<ICommand>();
+
+    public bool HasCommand()
+    {
+        return !commandQ.IsEmpty;
+    }
+
+    public ICommand Select()
+    {
+        if (commandQ.TryDequeue(out ICommand? command))
+        {
+            return command;
+        }
+        throw new InvalidOperationException("Планировщик пуст.");
+    }
+
+    public void Add(ICommand command)
+    {
+        commandQ.Enqueue(command);
+    }
+}
+
+public class LongCommand : ICommand
+{
+    public ICommand command;
+    public Scheduler scheduler;
+    public int executions;
+
+    public LongCommand(ICommand command, Scheduler scheduler, int executions)
+    {
+        this.command = command;
+        this.scheduler = scheduler;
+        this.executions = executions;
+    }
+
+    public void Execute()
+    {
+        if(executions > 0)
+        {
+            command.Execute();
+            executions--;
+            if(executions > 0) scheduler.Add(this);
+        }
     }
 }

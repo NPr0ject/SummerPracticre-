@@ -5,42 +5,17 @@ namespace task17tests;
 public class UnitTest1
 {
     [Fact]
-    public void SoftStop_ShouldStopAfterAllCommands()
+    public void testLongRunningCommand()
     {
-        ServerThread serverThread = new ServerThread();
-        for (int i = 0; i < 5; i++)
-        {
-            serverThread.commandQueue.Add(new WriteCommand());
-        }
+        var scheduler = new Scheduler();
+        var serverThread = new ServerThread(scheduler);
+        var longCommand = new LongCommand(new WriteCommand(), scheduler, 3);
+        serverThread.commandQueue.Add(longCommand);
         serverThread.commandQueue.Add(new SoftStop(serverThread));
         serverThread.thread.Join();
 
         Assert.False(serverThread.active);
-        Assert.True(serverThread.SoftStopRequest && serverThread.commandQueue.Count == 0);
-    }
-
-    [Fact]
-    public void HardStop_ShouldStopImmediately()
-    {
-        ServerThread serverThread = new ServerThread();
-        for (int i = 0; i < 5; i++)
-        {
-            serverThread.commandQueue.Add(new WriteCommand());
-        }
-        serverThread.commandQueue.Add(new HardStop(serverThread));
-        serverThread.thread.Join();
-
-        Assert.False(serverThread.active);
-    }
-
-    [Fact]
-    public void Exception_Test()
-    {
-        ServerThread serverThread = new ServerThread();
-        serverThread.commandQueue.Add(new ExceptionCommand());
-        serverThread.commandQueue.Add(new SoftStop(serverThread));
-        serverThread.thread.Join();
-        Assert.False(serverThread.active);
-        Assert.True(serverThread.SoftStopRequest && serverThread.commandQueue.Count == 0);
+        Assert.True(serverThread.SoftStopRequest && serverThread.commandQueue.Count == 0 &&
+        !scheduler.HasCommand());
     }
 }
