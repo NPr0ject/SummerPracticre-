@@ -5,17 +5,18 @@ namespace task17tests;
 public class UnitTest1
 {
     [Fact]
-    public void testLongRunningCommand()
+    public void TestCommand()
     {
         var scheduler = new Scheduler();
         var serverThread = new ServerThread(scheduler);
-        var longCommand = new LongCommand(new WriteCommand(), scheduler, 3);
-        serverThread.commandQueue.Add(longCommand);
-        serverThread.commandQueue.Add(new SoftStop(serverThread));
+        for (int i = 0; i < 5; i++)
+        {
+            serverThread.commandQueue.Add(new LongCommand(new TestCommand(i + 1), scheduler, 3));
+        }
+        serverThread.commandQueue.Add(new HardStop(serverThread));
         serverThread.thread.Join();
-
         Assert.False(serverThread.active);
-        Assert.True(serverThread.SoftStopRequest && serverThread.commandQueue.Count == 0 &&
-        !scheduler.HasCommand());
+        Assert.Empty(serverThread.commandQueue);
+        Assert.False(scheduler.HasCommand());
     }
 }
